@@ -1,0 +1,107 @@
+.container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: #0d0d1a;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 0);
+  background-size: 20px 20px;
+  user-select: none;
+}
+
+.canvasWrapper {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  will-change: transform;
+}
+
+.canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.6);
+}
+
+.controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 12, 30, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  backdrop-filter: blur(10px);
+}
+
+.modeSwitch {
+  display: flex;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.modeBtn {
+  padding: 3px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.modeBtn:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.modeBtn.modeActive {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.modeBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+}
+
+.ctrlBtn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ctrlBtn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.scaleLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 42px;
+  text-align: center;
+  font-family: monospace;
+}
