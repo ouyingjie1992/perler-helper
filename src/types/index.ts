@@ -14,6 +14,14 @@ export interface ColorStat {
   cells: Array<{ row: number; col: number }>;
 }
 
+// 图纸边距（像素，相对于原始图片尺寸）
+export interface BoardMargin {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
 // 拼豆图纸数据
 export interface PerlerBoard {
   id: string;
@@ -23,6 +31,7 @@ export interface PerlerBoard {
   cells: PerlerCell[];
   colorStats: ColorStat[];
   imageDataUrl?: string; // 原始图片
+  margin?: BoardMargin;  // 解析时使用的边距，供 overlay 模式裁切
 }
 
 // 5x5 分块信息

@@ -104,7 +104,7 @@ export async function parsePerlerImage(
           }))
           .sort((a, b) => b.count - a.count);
 
-        resolve({ rows: gridRows, cols: gridCols, cells, colorStats, imageDataUrl });
+        resolve({ rows: gridRows, cols: gridCols, cells, colorStats, imageDataUrl, margin });
       } catch (e) {
         reject(e);
       }

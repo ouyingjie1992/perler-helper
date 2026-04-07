@@ -87,28 +87,32 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({ board }) => {
     };
 
     if (renderMode === 'overlay' && imgRef.current && imgLoaded) {
-      // ── 叠加模式：绘制原图，在上面叠加高亮遮罩 ──
-      ctx.drawImage(imgRef.current, 0, 0, totalW, totalH);
+      // ── 叠加模式：用 margin 正确裁切原图后绘制 ──
+      const img = imgRef.current;
+      const m = board.margin ?? { top: 0, right: 0, bottom: 0, left: 0 };
+      // 原图中有效区域的像素范围
+      const srcEffW = img.naturalWidth - m.left - m.right;
+      const srcEffH = img.naturalHeight - m.top - m.bottom;
+      const srcCellW = srcEffW / cols;
+      const srcCellH = srcEffH / rows;
+
+      // 背景：把有效区域拉伸铺满整个 canvas
+      ctx.drawImage(img, m.left, m.top, srcEffW, srcEffH, 0, 0, totalW, totalH);
 
       if (hasSelection) {
         // 整体加一层暗色半透明遮罩
         ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
         ctx.fillRect(0, 0, totalW, totalH);
 
-        // 高亮选中颜色的格子（还原原图像素）
+        // 高亮选中颜色的格子（从有效区域还原对应原图像素）
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
             const cell = cellMap.get(`${r},${c}`);
             if (cell?.colorCode === selectedColorCode) {
               const x = c * cs, y = r * cs;
-              // 绘制原图局部
-              if (imgRef.current) {
-                const srcX = (c / cols) * imgRef.current.naturalWidth;
-                const srcY = (r / rows) * imgRef.current.naturalHeight;
-                const srcW = imgRef.current.naturalWidth / cols;
-                const srcH = imgRef.current.naturalHeight / rows;
-                ctx.drawImage(imgRef.current, srcX, srcY, srcW, srcH, x, y, cs, cs);
-              }
+              const srcX = m.left + c * srcCellW;
+              const srcY = m.top + r * srcCellH;
+              ctx.drawImage(img, srcX, srcY, srcCellW, srcCellH, x, y, cs, cs);
               // 高亮边框
               ctx.strokeStyle = 'rgba(255, 220, 0, 0.8)';
               ctx.lineWidth = 1;
