@@ -10,7 +10,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "install:all": "npm install && npm install --prefix server"
+    "install:all": "pnpm install && pnpm install --prefix server"
   },
   "dependencies": {
     "idb-keyval": "^6.2.2",

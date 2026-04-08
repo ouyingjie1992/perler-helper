@@ -15,7 +15,7 @@ export interface GridDetectResult {
   confidence: number; // 0~1
 }
 
-const SERVER_URL = (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? 'http://localhost:3001';
+const SERVER_URL = (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? '';
 
 /**
  * 调用后端服务检测网格规格。

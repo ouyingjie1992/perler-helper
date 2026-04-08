@@ -1,7 +1,7 @@
 import type { PerlerBoard } from '../types';
 import type { HintItem } from '../store/boardStore';
 
-const SERVER_URL = (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? 'http://localhost:3001';
+const SERVER_URL = (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? '';
 
 // ─── 主解析函数 ───────────────────────────────────────────────────────────────
 
