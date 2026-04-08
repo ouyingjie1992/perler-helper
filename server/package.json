@@ -11,6 +11,7 @@
     "cors": "^2.8.5",
     "culori": "^4.0.1",
     "express": "^5.0.1",
+    "ml-matrix": "^6.12.1",
     "sharp": "^0.33.5"
   },
   "devDependencies": {

@@ -8,82 +8,151 @@ import styles from './UploadPanel.module.css';
 
 type Step = 'upload' | 'config';
 
-// canvas 内容的初始最大显示尺寸（用于计算初始缩放）
 const MAX_PREVIEW_W = 640;
 const MAX_PREVIEW_H = 580;
 
+// 命中测试容差（canvas 像素，与 zoom 无关）
+const HIT_EDGE   = 8;   // 边缘拖拽区宽度
+const HIT_CORNER = 12;  // 角点优先命中半径
+
 interface SelectRect {
-  x: number; y: number; w: number; h: number; // canvas 像素坐标
+  x: number; y: number; w: number; h: number; // canvas 像素坐标，w/h 始终正值
+}
+
+// 将任意 w/h 符号的 SelectRect 标准化（x,y 为左上角，w,h>0）
+function normalize(r: SelectRect): SelectRect {
+  return {
+    x: r.w >= 0 ? r.x : r.x + r.w,
+    y: r.h >= 0 ? r.y : r.y + r.h,
+    w: Math.abs(r.w),
+    h: Math.abs(r.h),
+  };
+}
+
+type DragHandle =
+  | 'new'                                            // 空白处拖出新框
+  | 'move'                                           // 整框平移
+  | 'left' | 'right' | 'top' | 'bottom'             // 单边拖拽
+  | 'topleft' | 'topright' | 'bottomleft' | 'bottomright'; // 角点
+
+/** 在标准化矩形上做命中测试，返回 handle 类型 */
+function hitTest(r: SelectRect, px: number, py: number, zoom: number): DragHandle {
+  const n  = normalize(r);
+  const x1 = n.x, y1 = n.y, x2 = n.x + n.w, y2 = n.y + n.h;
+  // 将 canvas 像素容差转换到 zoom=1 的逻辑空间（容差本身就是 canvas 像素，无需缩放）
+  const ec = HIT_CORNER;
+  const ee = HIT_EDGE;
+
+  // 角点（优先）
+  if (px >= x1 - ec && px <= x1 + ec && py >= y1 - ec && py <= y1 + ec) return 'topleft';
+  if (px >= x2 - ec && px <= x2 + ec && py >= y1 - ec && py <= y1 + ec) return 'topright';
+  if (px >= x1 - ec && px <= x1 + ec && py >= y2 - ec && py <= y2 + ec) return 'bottomleft';
+  if (px >= x2 - ec && px <= x2 + ec && py >= y2 - ec && py <= y2 + ec) return 'bottomright';
+
+  // 四边
+  const inX = px >= x1 - ee && px <= x2 + ee;
+  const inY = py >= y1 - ee && py <= y2 + ee;
+  if (inX && Math.abs(py - y1) <= ee) return 'top';
+  if (inX && Math.abs(py - y2) <= ee) return 'bottom';
+  if (inY && Math.abs(px - x1) <= ee) return 'left';
+  if (inY && Math.abs(px - x2) <= ee) return 'right';
+
+  // 内部整框平移
+  if (px > x1 && px < x2 && py > y1 && py < y2) return 'move';
+
+  return 'new';
+}
+
+/** 根据 handle 返回 CSS cursor 字符串 */
+function handleCursor(h: DragHandle): string {
+  switch (h) {
+    case 'topleft':     return 'nw-resize';
+    case 'topright':    return 'ne-resize';
+    case 'bottomleft':  return 'sw-resize';
+    case 'bottomright': return 'se-resize';
+    case 'top':
+    case 'bottom':      return 'ns-resize';
+    case 'left':
+    case 'right':       return 'ew-resize';
+    case 'move':        return 'move';
+    default:            return 'crosshair';
+  }
 }
 
 export const UploadPanel: React.FC = () => {
   const setBoard = useBoardStore((s) => s.setBoard);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]     = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [detectInfo, setDetectInfo] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]         = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [step, setStep] = useState<Step>('upload');
+  const [step, setStep]           = useState<Step>('upload');
 
-  const [gridCols, setGridCols] = useState(48);
-  const [gridRows, setGridRows] = useState(48);
-  const [marginTop, setMarginTop] = useState(0);
+  const [gridCols, setGridCols]       = useState(48);
+  const [gridRows, setGridRows]       = useState(48);
+  const [marginTop, setMarginTop]     = useState(0);
   const [marginRight, setMarginRight] = useState(0);
   const [marginBottom, setMarginBottom] = useState(0);
-  const [marginLeft, setMarginLeft] = useState(0);
+  const [marginLeft, setMarginLeft]   = useState(0);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  // canvas px / 原图 px 的固定绘制比（由图片大小和 MAX 决定，不随缩放变化）
+  const imgRef     = useRef<HTMLImageElement | null>(null);
   const drawScaleRef = useRef(1);
 
-  // ── 视图缩放 & 平移（CSS transform，不影响 canvas 内容）──────────────────────
-  const [zoom, setZoom] = useState(1);          // CSS 缩放倍数
-  const [pan, setPan] = useState({ x: 0, y: 0 }); // CSS 平移 px
-  const isPanning = useRef(false);
-  const panStart = useRef({ mx: 0, my: 0, px: 0, py: 0 });
-  const isSpaceDown = useRef(false);
+  // ── 视图缩放 & 平移 ───────────────────────────────────────────────────────
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan]   = useState({ x: 0, y: 0 });
+  const isPanning       = useRef(false);
+  const panStart        = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+  const isSpaceDown     = useRef(false);
 
-  // ── 框选 ─────────────────────────────────────────────────────────────────────
-  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  // ── 框选状态 ──────────────────────────────────────────────────────────────
+  // selRect 始终是标准化的（x,y 为左上角，w,h≥0）canvas 像素坐标
   const [selRect, setSelRect] = useState<SelectRect | null>(null);
-  const isDragging = useRef(false);
+  // 当前拖拽 handle
+  const dragHandle   = useRef<DragHandle>('new');
+  const dragStart    = useRef<{ px: number; py: number; rect: SelectRect } | null>(null);
+  const isDragging   = useRef(false);
+  // hover handle（用于实时更新 cursor）
+  const [hoverHandle, setHoverHandle] = useState<DragHandle | null>(null);
 
-  // ── 计算初始绘制缩放比 ────────────────────────────────────────────────────────
+  // ── 工具函数 ──────────────────────────────────────────────────────────────
   const getDrawScale = (img: HTMLImageElement) =>
     Math.min(MAX_PREVIEW_W / img.naturalWidth, MAX_PREVIEW_H / img.naturalHeight, 1);
 
-  // ── 绘制预览 canvas ──────────────────────────────────────────────────────────
-  const drawPreview = useCallback((rect?: SelectRect | null) => {
-    const img = imgRef.current;
+  const canvas_w = () => canvasRef.current?.width  ?? 0;
+  const canvas_h = () => canvasRef.current?.height ?? 0;
+
+  // ── 绘制 canvas ───────────────────────────────────────────────────────────
+  const drawPreview = useCallback((rectOverride?: SelectRect | null) => {
+    const img    = imgRef.current;
     const canvas = canvasRef.current;
     if (!img || !canvas) return;
     const ctx = canvas.getContext('2d')!;
+    const ds  = drawScaleRef.current;
 
-    const ds = drawScaleRef.current;
-    canvas.width = Math.round(img.naturalWidth * ds);
+    canvas.width  = Math.round(img.naturalWidth  * ds);
     canvas.height = Math.round(img.naturalHeight * ds);
-
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    const ml = marginLeft * ds;
-    const mt = marginTop * ds;
-    const mr = marginRight * ds;
+    const ml = marginLeft   * ds;
+    const mt = marginTop    * ds;
+    const mr = marginRight  * ds;
     const mb = marginBottom * ds;
-    const eW = canvas.width - ml - mr;
+    const eW = canvas.width  - ml - mr;
     const eH = canvas.height - mt - mb;
 
-    // 选区外暗遮罩
+    // 暗遮罩（有效区外）
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fillRect(0, 0, canvas.width, mt);
     ctx.fillRect(0, mt + eH, canvas.width, canvas.height - mt - eH);
     ctx.fillRect(0, mt, ml, eH);
     ctx.fillRect(ml + eW, mt, canvas.width - ml - eW, eH);
 
-    // 蓝色有效区域框
+    // 蓝色有效区框
     ctx.strokeStyle = 'rgba(30,144,255,1)';
-    ctx.lineWidth = 2 / ds; // 视觉上保持 ~2px
+    ctx.lineWidth   = 2 / ds;
     ctx.strokeRect(ml, mt, eW, eH);
 
     // 网格线
@@ -92,7 +161,7 @@ export const UploadPanel: React.FC = () => {
       const cH = eH / gridRows;
 
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-      ctx.lineWidth = 0.5 / ds;
+      ctx.lineWidth   = 0.5 / ds;
       ctx.beginPath();
       for (let c = 1; c < gridCols; c++) {
         if (c % 5 !== 0) { ctx.moveTo(ml + c * cW, mt); ctx.lineTo(ml + c * cW, mt + eH); }
@@ -103,7 +172,7 @@ export const UploadPanel: React.FC = () => {
       ctx.stroke();
 
       ctx.strokeStyle = 'rgba(255,50,50,0.8)';
-      ctx.lineWidth = 1 / ds;
+      ctx.lineWidth   = 1 / ds;
       ctx.beginPath();
       for (let c = 0; c <= gridCols; c += 5) {
         ctx.moveTo(ml + c * cW, mt); ctx.lineTo(ml + c * cW, mt + eH);
@@ -114,101 +183,171 @@ export const UploadPanel: React.FC = () => {
       ctx.stroke();
     }
 
-    // 黄色虚线框选
-    const r = rect !== undefined ? rect : selRect;
-    if (r && (r.w !== 0 || r.h !== 0)) {
-      const rx = r.w >= 0 ? r.x : r.x + r.w;
-      const ry = r.h >= 0 ? r.y : r.y + r.h;
-      const rw = Math.abs(r.w);
-      const rh = Math.abs(r.h);
+    // 黄色虚线选框（rectOverride 优先，否则用 state）
+    const r = rectOverride !== undefined ? rectOverride : selRect;
+    if (r && r.w > 0 && r.h > 0) {
+      const n  = normalize(r);
+      const hs = 7 / ds;   // 角点手柄大小
+
+      // 虚线框
       ctx.save();
       ctx.strokeStyle = '#FFD700';
-      ctx.lineWidth = 2 / ds;
+      ctx.lineWidth   = 2 / ds;
       ctx.setLineDash([6 / ds, 3 / ds]);
-      ctx.strokeRect(rx, ry, rw, rh);
+      ctx.strokeRect(n.x, n.y, n.w, n.h);
       ctx.restore();
 
-      const hs = 7 / ds;
+      // 实心角点手柄
       ctx.fillStyle = '#FFD700';
-      [[rx, ry], [rx + rw, ry], [rx, ry + rh], [rx + rw, ry + rh]].forEach(([hx, hy]) => {
+      const corners = [
+        [n.x,        n.y       ],
+        [n.x + n.w,  n.y       ],
+        [n.x,        n.y + n.h ],
+        [n.x + n.w,  n.y + n.h],
+      ];
+      for (const [hx, hy] of corners) {
         ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
-      });
+      }
+
+      // 四边中点手柄（小圆形）
+      const midHandles = [
+        [n.x + n.w / 2, n.y       ],
+        [n.x + n.w / 2, n.y + n.h ],
+        [n.x,           n.y + n.h / 2],
+        [n.x + n.w,     n.y + n.h / 2],
+      ];
+      ctx.fillStyle = '#FFD700';
+      for (const [hx, hy] of midHandles) {
+        ctx.beginPath();
+        ctx.arc(hx, hy, (hs * 0.6) / 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marginTop, marginRight, marginBottom, marginLeft, gridCols, gridRows, selRect]);
 
-  // ── 把 canvas 坐标转为原图 margin ────────────────────────────────────────────
+  // ── canvas 坐标（考虑 zoom/pan）─────────────────────────────────────────
+  const getCanvasPos = useCallback((e: React.MouseEvent | MouseEvent) => {
+    const wrapper = wrapperRef.current;
+    const canvas  = canvasRef.current;
+    if (!wrapper || !canvas) return { x: 0, y: 0 };
+    const wRect   = wrapper.getBoundingClientRect();
+    const wx      = e.clientX - wRect.left;
+    const wy      = e.clientY - wRect.top;
+    const cssW    = canvas.width  * zoom;
+    const cssH    = canvas.height * zoom;
+    return {
+      x: ((wx - pan.x) / cssW) * canvas.width,
+      y: ((wy - pan.y) / cssH) * canvas.height,
+    };
+  }, [zoom, pan]);
+
+  // ── 把 canvas 选框坐标转换回 margin（原图像素）──────────────────────────
   const applySelRect = useCallback((r: SelectRect) => {
-    const img = imgRef.current;
-    if (!img) return;
     const ds = drawScaleRef.current;
     const cw = canvas_w();
     const ch = canvas_h();
-
-    const x1 = Math.max(0, Math.min(r.w >= 0 ? r.x : r.x + r.w, cw));
-    const y1 = Math.max(0, Math.min(r.h >= 0 ? r.y : r.y + r.h, ch));
-    const x2 = Math.max(0, Math.min(r.w >= 0 ? r.x + r.w : r.x, cw));
-    const y2 = Math.max(0, Math.min(r.h >= 0 ? r.y + r.h : r.y, ch));
-
-    setMarginLeft(Math.round(x1 / ds));
-    setMarginTop(Math.round(y1 / ds));
-    setMarginRight(Math.round((cw - x2) / ds));
+    const n  = normalize(r);
+    const x1 = Math.max(0, Math.min(n.x,        cw));
+    const y1 = Math.max(0, Math.min(n.y,        ch));
+    const x2 = Math.max(0, Math.min(n.x + n.w,  cw));
+    const y2 = Math.max(0, Math.min(n.y + n.h,  ch));
+    setMarginLeft  (Math.round(x1 / ds));
+    setMarginTop   (Math.round(y1 / ds));
+    setMarginRight (Math.round((cw - x2) / ds));
     setMarginBottom(Math.round((ch - y2) / ds));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const canvas_w = () => canvasRef.current?.width ?? 0;
-  const canvas_h = () => canvasRef.current?.height ?? 0;
+  // ── 根据 handle + 起始状态 + 当前鼠标位置计算新的 rect ──────────────────
+  const computeDraggedRect = useCallback((
+    handle: DragHandle,
+    startRect: SelectRect,
+    startPx: number, startPy: number,
+    curPx: number,   curPy: number,
+  ): SelectRect => {
+    const dx = curPx - startPx;
+    const dy = curPy - startPy;
+    const { x, y, w, h } = startRect;
+    const cw = canvas_w();
+    const ch = canvas_h();
 
-  // ── 获取鼠标在 canvas 上的坐标（考虑 zoom/pan）─────────────────────────────
-  // canvasWrapper 内 canvas 用 CSS transform 做了缩放，
-  // 所以鼠标坐标需要先减去 pan，再除以 zoom，再映射到 canvas 分辨率
-  const getCanvasPos = useCallback((e: React.MouseEvent) => {
-    const wrapper = wrapperRef.current;
-    const canvas = canvasRef.current;
-    if (!wrapper || !canvas) return { x: 0, y: 0 };
+    let nx = x, ny = y, nw = w, nh = h;
 
-    const wRect = wrapper.getBoundingClientRect();
-    // 鼠标在 wrapper 内的坐标
-    const wx = e.clientX - wRect.left;
-    const wy = e.clientY - wRect.top;
+    switch (handle) {
+      case 'move':
+        nx = Math.max(0, Math.min(cw - w, x + dx));
+        ny = Math.max(0, Math.min(ch - h, y + dy));
+        break;
+      case 'left':
+        nx = Math.max(0, Math.min(x + w - 4, x + dx));
+        nw = w - (nx - x);
+        break;
+      case 'right':
+        nw = Math.max(4, Math.min(cw - x, w + dx));
+        break;
+      case 'top':
+        ny = Math.max(0, Math.min(y + h - 4, y + dy));
+        nh = h - (ny - y);
+        break;
+      case 'bottom':
+        nh = Math.max(4, Math.min(ch - y, h + dy));
+        break;
+      case 'topleft':
+        nx = Math.max(0, Math.min(x + w - 4, x + dx));
+        ny = Math.max(0, Math.min(y + h - 4, y + dy));
+        nw = w - (nx - x);
+        nh = h - (ny - y);
+        break;
+      case 'topright':
+        ny = Math.max(0, Math.min(y + h - 4, y + dy));
+        nw = Math.max(4, Math.min(cw - x, w + dx));
+        nh = h - (ny - y);
+        break;
+      case 'bottomleft':
+        nx = Math.max(0, Math.min(x + w - 4, x + dx));
+        nw = w - (nx - x);
+        nh = Math.max(4, Math.min(ch - y, h + dy));
+        break;
+      case 'bottomright':
+        nw = Math.max(4, Math.min(cw - x, w + dx));
+        nh = Math.max(4, Math.min(ch - y, h + dy));
+        break;
+      case 'new':
+        nx = Math.min(startPx, curPx);
+        ny = Math.min(startPy, curPy);
+        nw = Math.abs(curPx - startPx);
+        nh = Math.abs(curPy - startPy);
+        break;
+    }
 
-    // canvas 左上角在 wrapper 内的 CSS 像素位置
-    // canvas 被 transform: translate(panX, panY) scale(zoom) 作用
-    // transformOrigin 是 '0 0'，所以 canvas 左上角在 wrapper 内 = (pan.x, pan.y)
-    const canvasLeft = pan.x;
-    const canvasTop = pan.y;
+    return { x: nx, y: ny, w: nw, h: nh };
+  }, []);
 
-    // canvas 的 CSS 显示尺寸
-    const cssW = canvas.width * zoom;
-    const cssH = canvas.height * zoom;
-
-    // 鼠标在 canvas CSS 区域内的坐标
-    const cx = wx - canvasLeft;
-    const cy = wy - canvasTop;
-
-    // 转换到 canvas 像素坐标
-    return {
-      x: (cx / cssW) * canvas.width,
-      y: (cy / cssH) * canvas.height,
-    };
-  }, [zoom, pan]);
-
-  // ── 鼠标事件：框选 or 平移 ───────────────────────────────────────────────────
+  // ── 鼠标事件 ─────────────────────────────────────────────────────────────
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+
     if (isSpaceDown.current || e.button === 1) {
-      // 空格 or 中键：平移模式
       isPanning.current = true;
-      panStart.current = { mx: e.clientX, my: e.clientY, px: pan.x, py: pan.y };
-    } else if (e.button === 0) {
-      // 左键：框选
-      const pos = getCanvasPos(e);
-      dragStart.current = pos;
-      isDragging.current = true;
-      setSelRect({ x: pos.x, y: pos.y, w: 0, h: 0 });
+      panStart.current  = { mx: e.clientX, my: e.clientY, px: pan.x, py: pan.y };
+      return;
     }
-  }, [pan, getCanvasPos]);
+
+    if (e.button !== 0) return;
+
+    const pos = getCanvasPos(e);
+
+    // 命中测试：有选框时检测 handle，否则绘新框
+    let handle: DragHandle = 'new';
+    if (selRect && selRect.w > 0 && selRect.h > 0) {
+      handle = hitTest(selRect, pos.x, pos.y, zoom);
+    }
+
+    dragHandle.current = handle;
+    dragStart.current  = { px: pos.x, py: pos.y, rect: selRect ? { ...selRect } : { x: pos.x, y: pos.y, w: 0, h: 0 } };
+    isDragging.current = true;
+  }, [pan, getCanvasPos, selRect, zoom]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isPanning.current) {
@@ -218,55 +357,67 @@ export const UploadPanel: React.FC = () => {
       });
       return;
     }
-    if (!isDragging.current || !dragStart.current) return;
+
     const pos = getCanvasPos(e);
-    const nr: SelectRect = {
-      x: dragStart.current.x,
-      y: dragStart.current.y,
-      w: pos.x - dragStart.current.x,
-      h: pos.y - dragStart.current.y,
-    };
+
+    // 更新 hover handle（用于 cursor）
+    if (!isDragging.current) {
+      if (selRect && selRect.w > 0 && selRect.h > 0) {
+        setHoverHandle(hitTest(selRect, pos.x, pos.y, zoom));
+      } else {
+        setHoverHandle(null);
+      }
+    }
+
+    if (!isDragging.current || !dragStart.current) return;
+
+    const nr = computeDraggedRect(
+      dragHandle.current,
+      dragStart.current.rect,
+      dragStart.current.px, dragStart.current.py,
+      pos.x, pos.y,
+    );
+
     setSelRect(nr);
     drawPreview(nr);
-  }, [getCanvasPos, drawPreview]);
+  }, [getCanvasPos, selRect, zoom, computeDraggedRect, drawPreview]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    if (isPanning.current) {
-      isPanning.current = false;
-      return;
-    }
+    if (isPanning.current) { isPanning.current = false; return; }
     if (!isDragging.current || !dragStart.current) return;
     isDragging.current = false;
+
     const pos = getCanvasPos(e);
-    const finalRect: SelectRect = {
-      x: dragStart.current.x,
-      y: dragStart.current.y,
-      w: pos.x - dragStart.current.x,
-      h: pos.y - dragStart.current.y,
-    };
+    const final = computeDraggedRect(
+      dragHandle.current,
+      dragStart.current.rect,
+      dragStart.current.px, dragStart.current.py,
+      pos.x, pos.y,
+    );
     dragStart.current = null;
-    if (Math.abs(finalRect.w) < 3 || Math.abs(finalRect.h) < 3) {
+
+    // 丢弃太小的新框
+    if (dragHandle.current === 'new' && (final.w < 4 || final.h < 4)) {
       setSelRect(null);
       return;
     }
-    setSelRect(finalRect);
-    applySelRect(finalRect);
-  }, [getCanvasPos, applySelRect]);
 
-  // ── 滚轮缩放（以鼠标为中心）────────────────────────────────────────────────
+    const nr = normalize(final);
+    setSelRect(nr);
+    applySelRect(nr);
+  }, [getCanvasPos, computeDraggedRect, applySelRect]);
+
+  // ── 滚轮缩放 ──────────────────────────────────────────────────────────────
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
     setZoom(prev => {
       const next = Math.max(0.2, Math.min(10, prev * factor));
-
-      // 以鼠标位置为缩放中心
       const wrapper = wrapperRef.current;
       if (!wrapper) return next;
       const wRect = wrapper.getBoundingClientRect();
       const mx = e.clientX - wRect.left;
       const my = e.clientY - wRect.top;
-
       setPan(prevPan => ({
         x: mx - (mx - prevPan.x) * (next / prev),
         y: my - (my - prevPan.y) * (next / prev),
@@ -275,26 +426,23 @@ export const UploadPanel: React.FC = () => {
     });
   }, []);
 
-  // ── 键盘空格：平移模式切换 ──────────────────────────────────────────────────
+  // ── 键盘 ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
+    const onDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && step === 'config') { e.preventDefault(); isSpaceDown.current = true; }
     };
-    const onKeyUp = (e: KeyboardEvent) => {
+    const onUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') isSpaceDown.current = false;
     };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); };
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup',   onUp);
+    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
   }, [step]);
 
-  // ── 适应屏幕 ─────────────────────────────────────────────────────────────────
-  const fitToScreen = useCallback(() => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, []);
+  // ── 适应屏幕 ──────────────────────────────────────────────────────────────
+  const fitToScreen = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
 
-  // ── 自动检测 ─────────────────────────────────────────────────────────────────
+  // ── 自动检测 ──────────────────────────────────────────────────────────────
   const runDetect = async (dataUrl: string) => {
     setDetecting(true);
     setDetectInfo(null);
@@ -302,24 +450,27 @@ export const UploadPanel: React.FC = () => {
       const result = await detectGrid(dataUrl);
       setGridCols(result.cols);
       setGridRows(result.rows);
-      setMarginTop(result.margin.top);
-      setMarginRight(result.margin.right);
+      setMarginTop   (result.margin.top);
+      setMarginRight (result.margin.right);
       setMarginBottom(result.margin.bottom);
-      setMarginLeft(result.margin.left);
-      // 同步更新选框
+      setMarginLeft  (result.margin.left);
+
       const img = imgRef.current;
       if (img) {
         const ds = drawScaleRef.current;
-        const cw = img.naturalWidth * ds;
+        const cw = img.naturalWidth  * ds;
         const ch = img.naturalHeight * ds;
         setSelRect({
-          x: result.margin.left * ds,
-          y: result.margin.top * ds,
-          w: cw - (result.margin.left + result.margin.right) * ds,
-          h: ch - (result.margin.top + result.margin.bottom) * ds,
+          x: result.margin.left  * ds,
+          y: result.margin.top   * ds,
+          w: cw - (result.margin.left + result.margin.right)  * ds,
+          h: ch - (result.margin.top  + result.margin.bottom) * ds,
         });
       }
-      setDetectInfo(`自动识别：${result.cols}×${result.rows} 格，单格约 ${result.cellW}×${result.cellH}px`);
+
+      const methodNote = (result as unknown as { method?: string }).method
+        ? ` [${(result as unknown as { method: string }).method}]` : '';
+      setDetectInfo(`自动识别：${result.cols}×${result.rows} 格，单格约 ${result.cellW}×${result.cellH}px${methodNote}`);
     } catch {
       setDetectInfo('自动识别失败，请手动框选有效区域');
     } finally {
@@ -327,15 +478,15 @@ export const UploadPanel: React.FC = () => {
     }
   };
 
-  // ── 图片加载 ─────────────────────────────────────────────────────────────────
+  // ── 图片加载 ──────────────────────────────────────────────────────────────
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
     setError(null);
     setSelRect(null);
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      const dataUrl = e.target?.result as string;
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target?.result as string;
       setPreviewUrl(dataUrl);
       imgRef.current = null;
       setStep('config');
@@ -359,7 +510,7 @@ export const UploadPanel: React.FC = () => {
     maxFiles: 1,
   });
 
-  // ── margin / grid 变化重绘 ────────────────────────────────────────────────────
+  // ── margin/grid 变化重绘 ──────────────────────────────────────────────────
   useEffect(() => {
     if (step === 'config') requestAnimationFrame(() => drawPreview());
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -370,7 +521,7 @@ export const UploadPanel: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selRect]);
 
-  // ── 解析 ─────────────────────────────────────────────────────────────────────
+  // ── 解析 ─────────────────────────────────────────────────────────────────
   const handleConfirm = async () => {
     if (!previewUrl) return;
     setLoading(true);
@@ -404,14 +555,15 @@ export const UploadPanel: React.FC = () => {
     setPan({ x: 0, y: 0 });
   };
 
-  // ── 动态 cursor ──────────────────────────────────────────────────────────────
-  const getCursor = () => {
-    if (isPanning.current) return 'grabbing';
-    if (isSpaceDown.current) return 'grab';
+  // ── cursor 决策 ───────────────────────────────────────────────────────────
+  const getCursor = (): string => {
+    if (isPanning.current || isSpaceDown.current) return isPanning.current ? 'grabbing' : 'grab';
+    if (isDragging.current) return handleCursor(dragHandle.current);
+    if (hoverHandle !== null) return handleCursor(hoverHandle);
     return 'crosshair';
   };
 
-  // ── Render: 上传步骤 ──────────────────────────────────────────────────────────
+  // ── Render: 上传步骤 ──────────────────────────────────────────────────────
   if (step === 'upload') {
     return (
       <div className={styles.uploadWrapper}>
@@ -441,11 +593,11 @@ export const UploadPanel: React.FC = () => {
     );
   }
 
-  // ── Render: 配置步骤 ──────────────────────────────────────────────────────────
+  // ── Render: 配置步骤 ──────────────────────────────────────────────────────
   return (
     <div className={styles.configPanel}>
 
-      {/* 左：预览区（缩放 + 框选） */}
+      {/* 左：预览区 */}
       <div className={styles.previewArea}>
 
         {/* 缩放控制栏 */}
@@ -458,7 +610,7 @@ export const UploadPanel: React.FC = () => {
           <span className={styles.zoomHint}>滚轮缩放 · 空格+拖动平移</span>
         </div>
 
-        {/* canvas 容器（overflow hidden，内部用 transform） */}
+        {/* canvas 容器 */}
         <div
           ref={wrapperRef}
           className={styles.canvasWrapper}
@@ -483,7 +635,9 @@ export const UploadPanel: React.FC = () => {
         </div>
 
         <p className={styles.previewHint}>
-          <strong>拖拽框选</strong>有效区域 &nbsp;|&nbsp; 蓝框 = 当前选区 &nbsp;|&nbsp; 红线 = 5×5 分块
+          <strong>拖拽框选</strong>有效区域 &nbsp;|&nbsp;
+          <strong>拖拽选框边缘/角点</strong>微调 &nbsp;|&nbsp;
+          蓝框 = 当前选区 &nbsp;|&nbsp; 红线 = 5×5 分块
         </p>
       </div>
 
@@ -524,7 +678,9 @@ export const UploadPanel: React.FC = () => {
 
         <section className={styles.section}>
           <h4 className={styles.sectionTitle}>边距（框选或手动输入）</h4>
-          <p className={styles.sectionHint}>在左侧图片上拖拽框选有效区域，也可直接输入像素值</p>
+          <p className={styles.sectionHint}>
+            在左侧拖拽框选，也可拖拽选框<strong>边缘</strong>或<strong>角点</strong>精确微调，或直接输入像素值
+          </p>
           <div className={styles.marginGrid}>
             <div />
             <label className={styles.marginInput}><span>上</span>
