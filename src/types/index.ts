@@ -32,6 +32,8 @@ export interface PerlerBoard {
   colorStats: ColorStat[];
   imageDataUrl?: string; // 原始图片
   margin?: BoardMargin;  // 解析时使用的边距，供 overlay 模式裁切
+  /** 解析时用户指定的颜色提示（用于编辑时限制色板范围） */
+  hintCodes?: string[];
 }
 
 // 5x5 分块信息

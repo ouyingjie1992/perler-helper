@@ -16,9 +16,9 @@ export interface MarkColor {
 const MARK_COLOR_PALETTE: MarkColor[] = [
   { code: 'ZG1', name: 'ZG1', hex: '#DAABB3' },
   { code: 'ZG2', name: 'ZG2', hex: '#D6AA87' },
-  { code: 'ZG3', name: 'ZG3', hex: '#C1B08D' },
-  { code: 'ZG4', name: 'ZG4', hex: '#86B69F' },
-  { code: 'ZG5', name: 'ZG5', hex: '#B49DC6' },
+  { code: 'ZG3', name: 'ZG3', hex: '#C1BD8D' },
+  { code: 'ZG4', name: 'ZG4', hex: '#96869F' },
+  { code: 'ZG5', name: 'ZG5', hex: '#8490A6' },
   { code: 'ZG6', name: 'ZG6', hex: '#94BFE2' },
   { code: 'ZG7', name: 'ZG7', hex: '#E2A9D2' },
   { code: 'ZG8', name: 'ZG8', hex: '#AB91C0' },
@@ -65,9 +65,9 @@ const MARK_COLOR_PALETTE: MarkColor[] = [
   { code: 'B15', name: 'B15', hex: '#2E5132' },
   { code: 'B16', name: 'B16', hex: '#C5ED9C' },
   { code: 'B17', name: 'B17', hex: '#9BB13A' },
-  { code: 'B18', name: 'B18', hex: '#6EE449' },
+  { code: 'B18', name: 'B18', hex: '#E6EE49' },
   { code: 'B19', name: 'B19', hex: '#24B88C' },
-  { code: 'B20', name: 'B20', hex: '#2CF0CC' },
+  { code: 'B20', name: 'B20', hex: '#C2F0CC' },
   { code: 'B21', name: 'B21', hex: '#156A6B' },
   { code: 'B22', name: 'B22', hex: '#0B3C43' },
   { code: 'B23', name: 'B23', hex: '#303A21' },
@@ -89,7 +89,7 @@ const MARK_COLOR_PALETTE: MarkColor[] = [
   { code: 'C7', name: 'C7', hex: '#3677D2' },
   { code: 'C8', name: 'C8', hex: '#0F54C0' },
   { code: 'C9', name: 'C9', hex: '#324BCA' },
-  { code: 'C10', name: 'C10', hex: '#3EBCF2' },
+  { code: 'C10', name: 'C10', hex: '#3EBCE2' },
   { code: 'C11', name: 'C11', hex: '#28DDDE' },
   { code: 'C12', name: 'C12', hex: '#1C334D' },
   { code: 'C13', name: 'C13', hex: '#CDE8FF' },
@@ -115,19 +115,19 @@ const MARK_COLOR_PALETTE: MarkColor[] = [
   { code: 'D4', name: 'D4', hex: '#182A84' },
   { code: 'D5', name: 'D5', hex: '#B843C5' },
   { code: 'D6', name: 'D6', hex: '#AC7BDE' },
-  { code: 'D7', name: 'D7', hex: '#8B54B3' },
+  { code: 'D7', name: 'D7', hex: '#8854B3' },
   { code: 'D8', name: 'D8', hex: '#E2D3FF' },
   { code: 'D9', name: 'D9', hex: '#D5B9F8' },
   { code: 'D10', name: 'D10', hex: '#361851' },
   { code: 'D11', name: 'D11', hex: '#B9BAE1' },
   { code: 'D12', name: 'D12', hex: '#DE9AD4' },
   { code: 'D13', name: 'D13', hex: '#B90095' },
-  { code: 'D14', name: 'D14', hex: '#88279B' },
+  { code: 'D14', name: 'D14', hex: '#8B279B' },
   { code: 'D15', name: 'D15', hex: '#2F1F90' },
-  { code: 'D16', name: 'D16', hex: '#C4D4F6' },
+  { code: 'D16', name: 'D16', hex: '#E3E1EE' },
   { code: 'D17', name: 'D17', hex: '#C4D4F6' },
   { code: 'D18', name: 'D18', hex: '#A45EC7' },
-  { code: 'D19', name: 'D19', hex: '#DBC3D7' },
+  { code: 'D19', name: 'D19', hex: '#D8C3D7' },
   { code: 'D20', name: 'D20', hex: '#9C32B2' },
   { code: 'D21', name: 'D21', hex: '#9A009B' },
   { code: 'D22', name: 'D22', hex: '#333A95' },
@@ -138,7 +138,7 @@ const MARK_COLOR_PALETTE: MarkColor[] = [
   { code: 'E1', name: 'E1', hex: '#FDD3CC' },
   { code: 'E2', name: 'E2', hex: '#FEC0DF' },
   { code: 'E3', name: 'E3', hex: '#FFB7E7' },
-  { code: 'E4', name: 'E4', hex: '#E6849E' },
+  { code: 'E4', name: 'E4', hex: '#E8649E' },
   { code: 'E5', name: 'E5', hex: '#F551A2' },
   { code: 'E6', name: 'E6', hex: '#F13D74' },
   { code: 'E7', name: 'E7', hex: '#C63478' },
@@ -182,7 +182,7 @@ const MARK_COLOR_PALETTE: MarkColor[] = [
   { code: 'F21', name: 'F21', hex: '#F7B4C6' },
   { code: 'F22', name: 'F22', hex: '#FDC0D0' },
   { code: 'F23', name: 'F23', hex: '#F67E66' },
-  { code: 'F24', name: 'F24', hex: '#E69BAA' },
+  { code: 'F24', name: 'F24', hex: '#E698AA' },
   { code: 'F25', name: 'F25', hex: '#E54B4F' },
   { code: 'G1', name: 'G1', hex: '#FFE2CE' },
   { code: 'G2', name: 'G2', hex: '#FFC4AA' },
@@ -191,23 +191,23 @@ const MARK_COLOR_PALETTE: MarkColor[] = [
   { code: 'G5', name: 'G5', hex: '#EDB045' },
   { code: 'G6', name: 'G6', hex: '#E99C17' },
   { code: 'G7', name: 'G7', hex: '#9D5B3E' },
-  { code: 'G8', name: 'G8', hex: '#753B32' },
+  { code: 'G8', name: 'G8', hex: '#753832' },
   { code: 'G9', name: 'G9', hex: '#E6B483' },
-  { code: 'G10', name: 'G10', hex: '#D88C39' },
-  { code: 'G11', name: 'G11', hex: '#C0C593' },
+  { code: 'G10', name: 'G10', hex: '#D98C39' },
+  { code: 'G11', name: 'G11', hex: '#E0C593' },
   { code: 'G12', name: 'G12', hex: '#FFC890' },
-  { code: 'G13', name: 'G13', hex: '#87714A' },
+  { code: 'G13', name: 'G13', hex: '#B7714A' },
   { code: 'G14', name: 'G14', hex: '#8D614C' },
   { code: 'G15', name: 'G15', hex: '#FCF9E0' },
   { code: 'G16', name: 'G16', hex: '#F2D9BA' },
-  { code: 'G17', name: 'G17', hex: '#7B524B' },
+  { code: 'G17', name: 'G17', hex: '#78524B' },
   { code: 'G18', name: 'G18', hex: '#FFE4CC' },
   { code: 'G19', name: 'G19', hex: '#E07935' },
   { code: 'G20', name: 'G20', hex: '#A94023' },
   { code: 'G21', name: 'G21', hex: '#B88558' },
-  { code: 'H1', name: 'H1', hex: '#DFFBFF' },
-  { code: 'H2', name: 'H2', hex: '#FFFFFF' },
-  { code: 'H3', name: 'H3', hex: '#66B1BA' },
+  { code: 'H1', name: 'H1', hex: '#FDFBFF' },
+  { code: 'H2', name: 'H2', hex: '#FEFFFF' },
+  { code: 'H3', name: 'H3', hex: '#B6B1BA' },
   { code: 'H4', name: 'H4', hex: '#89858C' },
   { code: 'H5', name: 'H5', hex: '#48464E' },
   { code: 'H6', name: 'H6', hex: '#2F2B2F' },
@@ -229,66 +229,66 @@ const MARK_COLOR_PALETTE: MarkColor[] = [
   { code: 'H22', name: 'H22', hex: '#CACAD4' },
   { code: 'H23', name: 'H23', hex: '#9A9D94' },
   { code: 'M1', name: 'M1', hex: '#BCC6B8' },
-  { code: 'M2', name: 'M2', hex: '#AAA386' },
+  { code: 'M2', name: 'M2', hex: '#8AA386' },
   { code: 'M3', name: 'M3', hex: '#697D80' },
   { code: 'M4', name: 'M4', hex: '#E3D2BC' },
   { code: 'M5', name: 'M5', hex: '#D0CCAA' },
   { code: 'M6', name: 'M6', hex: '#B0A782' },
-  { code: 'M7', name: 'M7', hex: '#84A497' },
+  { code: 'M7', name: 'M7', hex: '#B4A497' },
   { code: 'M8', name: 'M8', hex: '#B38281' },
   { code: 'M9', name: 'M9', hex: '#A58767' },
   { code: 'M10', name: 'M10', hex: '#C5B2BC' },
-  { code: 'M11', name: 'M11', hex: '#FF7594' },
+  { code: 'M11', name: 'M11', hex: '#9F7594' },
   { code: 'M12', name: 'M12', hex: '#644749' },
   { code: 'M13', name: 'M13', hex: '#D19066' },
   { code: 'M14', name: 'M14', hex: '#C77362' },
-  { code: 'M15', name: 'M15', hex: '#757D7B' },
+  { code: 'M15', name: 'M15', hex: '#757D78' },
   { code: 'P1', name: 'P1', hex: '#FCF7F8' },
   { code: 'P2', name: 'P2', hex: '#B0A9AC' },
   { code: 'P3', name: 'P3', hex: '#AFDCAB' },
   { code: 'P4', name: 'P4', hex: '#FEA49F' },
-  { code: 'P5', name: 'P5', hex: '#EEBC3E' },
+  { code: 'P5', name: 'P5', hex: '#EE8C3E' },
   { code: 'P6', name: 'P6', hex: '#5FD0A7' },
   { code: 'P7', name: 'P7', hex: '#EB9270' },
-  { code: 'P8', name: 'P8', hex: '#9DD958' },
-  { code: 'P9', name: 'P9', hex: '#9D9D9D' },
+  { code: 'P8', name: 'P8', hex: '#F0D958' },
+  { code: 'P9', name: 'P9', hex: '#D9D9D9' },
   { code: 'P10', name: 'P10', hex: '#D9C7EA' },
   { code: 'P11', name: 'P11', hex: '#F3ECC9' },
-  { code: 'P12', name: 'P12', hex: '#66EEF2' },
+  { code: 'P12', name: 'P12', hex: '#E6EEF2' },
   { code: 'P13', name: 'P13', hex: '#AACBEF' },
-  { code: 'P14', name: 'P14', hex: '#3376B0' },
+  { code: 'P14', name: 'P14', hex: '#337680' },
   { code: 'P15', name: 'P15', hex: '#668575' },
-  { code: 'P16', name: 'P16', hex: '#EEBF45' },
+  { code: 'P16', name: 'P16', hex: '#FEBF45' },
   { code: 'P17', name: 'P17', hex: '#FEA324' },
-  { code: 'P18', name: 'P18', hex: '#FEB99F' },
-  { code: 'P19', name: 'P19', hex: '#FFE0E9' },
+  { code: 'P18', name: 'P18', hex: '#FEB89F' },
+  { code: 'P19', name: 'P19', hex: '#FFFEEC' },
   { code: 'P20', name: 'P20', hex: '#FEBECF' },
   { code: 'P21', name: 'P21', hex: '#ECBEBF' },
   { code: 'P22', name: 'P22', hex: '#E4A89F' },
   { code: 'P23', name: 'P23', hex: '#A56268' },
   { code: 'Q1', name: 'Q1', hex: '#F2A5E8' },
-  { code: 'Q2', name: 'Q2', hex: '#9EEC91' },
+  { code: 'Q2', name: 'Q2', hex: '#E9EC91' },
   { code: 'Q3', name: 'Q3', hex: '#FFFF00' },
   { code: 'Q4', name: 'Q4', hex: '#FFEBFA' },
   { code: 'Q5', name: 'Q5', hex: '#76CEDE' },
   { code: 'R1', name: 'R1', hex: '#D50D21' },
   { code: 'R2', name: 'R2', hex: '#F92F83' },
   { code: 'R3', name: 'R3', hex: '#FD8324' },
-  { code: 'R4', name: 'R4', hex: '#8EC31E' },
+  { code: 'R4', name: 'R4', hex: '#F8EC31' },
   { code: 'R5', name: 'R5', hex: '#35C75B' },
-  { code: 'R6', name: 'R6', hex: '#23B891' },
+  { code: 'R6', name: 'R6', hex: '#238891' },
   { code: 'R7', name: 'R7', hex: '#19779D' },
   { code: 'R8', name: 'R8', hex: '#1A60C3' },
   { code: 'R9', name: 'R9', hex: '#9A56B4' },
   { code: 'R10', name: 'R10', hex: '#FFDB4C' },
-  { code: 'R11', name: 'R11', hex: '#FFEBFA' },
+  { code: 'R11', name: 'R11', hex: '#FFEBFB' },
   { code: 'R12', name: 'R12', hex: '#D8D5CE' },
   { code: 'R13', name: 'R13', hex: '#55514C' },
   { code: 'R14', name: 'R14', hex: '#9FE4DF' },
   { code: 'R15', name: 'R15', hex: '#77CEE9' },
   { code: 'R16', name: 'R16', hex: '#3ECFCA' },
-  { code: 'R17', name: 'R17', hex: '#4AB67A' },
-  { code: 'R18', name: 'R18', hex: '#7CD9DD' },
+  { code: 'R17', name: 'R17', hex: '#4A867A' },
+  { code: 'R18', name: 'R18', hex: '#7FCD9D' },
   { code: 'R19', name: 'R19', hex: '#CDE55D' },
   { code: 'R20', name: 'R20', hex: '#E8C7B4' },
   { code: 'R21', name: 'R21', hex: '#AD6F3C' },
@@ -303,7 +303,7 @@ const MARK_COLOR_PALETTE: MarkColor[] = [
   { code: 'Y1', name: 'Y1', hex: '#FD6FB4' },
   { code: 'Y2', name: 'Y2', hex: '#FEB481' },
   { code: 'Y3', name: 'Y3', hex: '#D7FAA0' },
-  { code: 'Y4', name: 'Y4', hex: '#BDBFFA' },
+  { code: 'Y4', name: 'Y4', hex: '#8BDBFA' },
   { code: 'Y5', name: 'Y5', hex: '#E987EA' },
 ];
 
@@ -324,47 +324,42 @@ const PALETTE_WITH_RGB = MARK_COLOR_PALETTE.map((color) => ({
   rgbObj: hexToRgbObj(color.hex),
 }));
 
+/** 色码 → hex 的快速查找表（供 OCR 路径按色码直接取 hex） */
+export const PALETTE_HEX_MAP: Map<string, string> = new Map(
+  MARK_COLOR_PALETTE.map((c) => [c.code, c.hex]),
+);
+
 export interface LegendSampleInput {
   code: string;
   sampledHex: string;
 }
 
 /**
- * 使用 CIEDE2000 找到最接近的颜色
- * CIEDE2000 在感知均匀性上远优于前端原来的 CIE76（平方欧氏距离），
- * 对于人眼难以区分的颜色对（如肤色系），准确率显著提升
+ * 使用 CIEDE2000 找到最接近的颜色。
  *
  * @param r 0-255
  * @param g 0-255
  * @param b 0-255
- * @param legendSamples 可选：用户手动标注的图例样本，优先匹配
+ * @param hintCodes 用户指定的色码白名单（非空时只在白名单内搜索，大幅提升精度）
  */
 export function findNearestColor(
   r: number, g: number, b: number,
-  legendSamples: LegendSampleInput[] = [],
+  hintCodes?: string[],
 ): { code: string; hex: string } {
   const input = { mode: 'rgb' as const, r: r / 255, g: g / 255, b: b / 255 };
 
-  // 优先在图例样本中匹配
-  if (legendSamples.length > 0) {
-    let minDist = Infinity;
-    let bestSample = legendSamples[0];
-    for (const s of legendSamples) {
-      const sampleRgb = toRgb(s.sampledHex);
-      if (!sampleRgb) continue;
-      const d = de2000(input, sampleRgb);
-      if (d < minDist) { minDist = d; bestSample = s; }
-    }
-    // 如果图例样本匹配足够好（ΔE < 25），使用图例颜色
-    if (minDist < 25) {
-      return { code: bestSample.code, hex: bestSample.sampledHex };
-    }
+  // 确定候选集合：有白名单时只搜索白名单内的颜色
+  let candidates = PALETTE_WITH_RGB;
+  if (hintCodes && hintCodes.length > 0) {
+    const codeSet = new Set(hintCodes);
+    const filtered = PALETTE_WITH_RGB.filter((p) => codeSet.has(p.code));
+    // 白名单匹配到有效颜色才缩小范围，否则回落到全色板
+    if (filtered.length > 0) candidates = filtered;
   }
 
-  // 在色板中找最近颜色（CIEDE2000）
   let minDist = Infinity;
-  let best = PALETTE_WITH_RGB[0];
-  for (const p of PALETTE_WITH_RGB) {
+  let best = candidates[0];
+  for (const p of candidates) {
     const d = de2000(input, p.rgbObj);
     if (d < minDist) { minDist = d; best = p; }
   }

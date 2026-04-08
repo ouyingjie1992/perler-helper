@@ -1,5 +1,5 @@
-import type { LegendSample } from './legendExtractor';
 import type { PerlerBoard } from '../types';
+import type { HintItem } from '../store/boardStore';
 
 const SERVER_URL = (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? 'http://localhost:3001';
 
@@ -7,20 +7,21 @@ const SERVER_URL = (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.
 
 /**
  * 将图纸图片发送到后端解析。
- * 后端使用 sharp（professional unsharp mask）+ culori CIEDE2000 色彩匹配，
- * 替代原来手写的 box-blur 锐化和 CIE76 色差计算。
+ * 后端使用 sharp（professional unsharp mask）+ culori CIEDE2000 色彩匹配。
+ *
+ * @param hintItems 用户填写的涉及颜色列表（可含数量），非空时后端缩小匹配范围
  */
 export async function parsePerlerImage(
   imageDataUrl: string,
   gridCols: number,
   gridRows: number,
   margin: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 },
-  legendSamples: LegendSample[] = [],
+  hintItems: HintItem[] = [],
 ): Promise<Omit<PerlerBoard, 'id' | 'name'>> {
   const resp = await fetch(`${SERVER_URL}/api/parse-image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageDataUrl, gridCols, gridRows, margin, legendSamples }),
+    body: JSON.stringify({ imageDataUrl, gridCols, gridRows, margin, hintItems }),
   });
 
   if (!resp.ok) {
@@ -49,4 +50,3 @@ export function getContrastColor(hex: string): string {
   return lum > 0.5 ? '#000000' : '#ffffff';
 }
 
-export type { LegendSample };

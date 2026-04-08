@@ -12,10 +12,12 @@
     "culori": "^4.0.1",
     "express": "^5.0.1",
     "ml-matrix": "^6.12.1",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
+    "@types/culori": "^4.0.1",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
     "tsx": "^4.19.2",

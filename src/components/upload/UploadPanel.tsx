@@ -3,6 +3,8 @@ import { useDropzone } from 'react-dropzone';
 import { parsePerlerImage } from '../../utils/boardParser';
 import { detectGrid } from '../../utils/gridDetector';
 import { useBoardStore } from '../../store/boardStore';
+import { PaletteSelector } from './PaletteSelector';
+import { SavedProjects } from './SavedProjects';
 import type { PerlerBoard } from '../../types';
 import styles from './UploadPanel.module.css';
 
@@ -81,6 +83,14 @@ function handleCursor(h: DragHandle): string {
 
 export const UploadPanel: React.FC = () => {
   const setBoard = useBoardStore((s) => s.setBoard);
+  const hintItems = useBoardStore((s) => s.hintItems);
+  const setHintItems = useBoardStore((s) => s.setHintItems);
+  const clearHistory = useBoardStore((s) => s.clearHistory);
+  const setCurrentProjectId = useBoardStore((s) => s.setCurrentProjectId);
+  const commitBoard = useBoardStore((s) => s.commitBoard);
+
+  // 所有已填数量的合计
+  const hintTotal = hintItems.reduce((sum, h) => sum + (h.count ?? 0), 0);
   const [loading, setLoading]     = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [detectInfo, setDetectInfo] = useState<string | null>(null);
@@ -106,10 +116,17 @@ export const UploadPanel: React.FC = () => {
   const isPanning       = useRef(false);
   const panStart        = useRef({ mx: 0, my: 0, px: 0, py: 0 });
   const isSpaceDown     = useRef(false);
+  // ref 镜像（供原生触摸事件回调读取最新值）
+  const zoomRef = useRef(zoom);
+  const panRef  = useRef(pan);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { panRef.current  = pan;  }, [pan]);
 
   // ── 框选状态 ──────────────────────────────────────────────────────────────
   // selRect 始终是标准化的（x,y 为左上角，w,h≥0）canvas 像素坐标
   const [selRect, setSelRect] = useState<SelectRect | null>(null);
+  const selRectRef = useRef<SelectRect | null>(null);
+  const setSelRectBoth = (r: SelectRect | null) => { selRectRef.current = r; setSelRect(r); };
   // 当前拖拽 handle
   const dragHandle   = useRef<DragHandle>('new');
   const dragStart    = useRef<{ px: number; py: number; rect: SelectRect } | null>(null);
@@ -187,17 +204,18 @@ export const UploadPanel: React.FC = () => {
     const r = rectOverride !== undefined ? rectOverride : selRect;
     if (r && r.w > 0 && r.h > 0) {
       const n  = normalize(r);
-      const hs = 7 / ds;   // 角点手柄大小
+      // 手柄固定屏幕像素大小：目标 8px 屏幕 → canvas坐标 = 8 / zoom
+      const hs = 8 / zoom;
 
-      // 虚线框
+      // 虚线框（线宽 1.5px 屏幕）
       ctx.save();
       ctx.strokeStyle = '#FFD700';
-      ctx.lineWidth   = 2 / ds;
-      ctx.setLineDash([6 / ds, 3 / ds]);
+      ctx.lineWidth   = 1.5 / zoom;
+      ctx.setLineDash([5 / zoom, 3 / zoom]);
       ctx.strokeRect(n.x, n.y, n.w, n.h);
       ctx.restore();
 
-      // 实心角点手柄
+      // 实心角点手柄（方形）
       ctx.fillStyle = '#FFD700';
       const corners = [
         [n.x,        n.y       ],
@@ -209,22 +227,22 @@ export const UploadPanel: React.FC = () => {
         ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
       }
 
-      // 四边中点手柄（小圆形）
+      // 四边中点手柄（圆形，略小）
       const midHandles = [
-        [n.x + n.w / 2, n.y       ],
-        [n.x + n.w / 2, n.y + n.h ],
-        [n.x,           n.y + n.h / 2],
-        [n.x + n.w,     n.y + n.h / 2],
+        [n.x + n.w / 2, n.y            ],
+        [n.x + n.w / 2, n.y + n.h      ],
+        [n.x,           n.y + n.h / 2  ],
+        [n.x + n.w,     n.y + n.h / 2  ],
       ];
       ctx.fillStyle = '#FFD700';
       for (const [hx, hy] of midHandles) {
         ctx.beginPath();
-        ctx.arc(hx, hy, (hs * 0.6) / 1, 0, Math.PI * 2);
+        ctx.arc(hx, hy, hs * 0.55, 0, Math.PI * 2);
         ctx.fill();
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [marginTop, marginRight, marginBottom, marginLeft, gridCols, gridRows, selRect]);
+  }, [marginTop, marginRight, marginBottom, marginLeft, gridCols, gridRows, selRect, zoom]);
 
   // ── canvas 坐标（考虑 zoom/pan）─────────────────────────────────────────
   const getCanvasPos = useCallback((e: React.MouseEvent | MouseEvent) => {
@@ -378,7 +396,7 @@ export const UploadPanel: React.FC = () => {
       pos.x, pos.y,
     );
 
-    setSelRect(nr);
+    setSelRectBoth(nr);
     drawPreview(nr);
   }, [getCanvasPos, selRect, zoom, computeDraggedRect, drawPreview]);
 
@@ -398,12 +416,12 @@ export const UploadPanel: React.FC = () => {
 
     // 丢弃太小的新框
     if (dragHandle.current === 'new' && (final.w < 4 || final.h < 4)) {
-      setSelRect(null);
+      setSelRectBoth(null);
       return;
     }
 
     const nr = normalize(final);
-    setSelRect(nr);
+    setSelRectBoth(nr);
     applySelRect(nr);
   }, [getCanvasPos, computeDraggedRect, applySelRect]);
 
@@ -442,14 +460,195 @@ export const UploadPanel: React.FC = () => {
   // ── 适应屏幕 ──────────────────────────────────────────────────────────────
   const fitToScreen = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
 
+  // ── 触摸事件（non-passive，支持 iPad 触屏框选/平移/缩放） ────────────────
+  // 用 ref 包一层，让闭包内总能读到最新的工具函数
+  const computeDraggedRectRef = useRef(computeDraggedRect);
+  const applySelRectRef       = useRef(applySelRect);
+  const drawPreviewRef        = useRef(drawPreview);
+  useEffect(() => { computeDraggedRectRef.current = computeDraggedRect; }, [computeDraggedRect]);
+  useEffect(() => { applySelRectRef.current       = applySelRect;       }, [applySelRect]);
+  useEffect(() => { drawPreviewRef.current        = drawPreview;        }, [drawPreview]);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    // 将屏幕坐标转换为 canvas 坐标
+    const toCanvasPos = (clientX: number, clientY: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return { x: 0, y: 0 };
+      const wRect = wrapper.getBoundingClientRect();
+      const wx    = clientX - wRect.left;
+      const wy    = clientY - wRect.top;
+      const cssW  = canvas.width  * zoomRef.current;
+      const cssH  = canvas.height * zoomRef.current;
+      return {
+        x: ((wx - panRef.current.x) / cssW) * canvas.width,
+        y: ((wy - panRef.current.y) / cssH) * canvas.height,
+      };
+    };
+
+    let pinchDist: number | null = null;
+    let touchPanStart: { mx: number; my: number; px: number; py: number } | null = null;
+
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+
+      if (e.touches.length === 2) {
+        // 双指：结束当前框选拖拽，准备捏合缩放 + 双指平移
+        isDragging.current = false;
+        dragStart.current  = null;
+        const [a, b] = [e.touches[0], e.touches[1]];
+        pinchDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+        touchPanStart = {
+          mx: (a.clientX + b.clientX) / 2,
+          my: (a.clientY + b.clientY) / 2,
+          px: panRef.current.x,
+          py: panRef.current.y,
+        };
+        return;
+      }
+
+      if (e.touches.length === 1) {
+        pinchDist = null;
+        touchPanStart = null;
+        const t = e.touches[0];
+        const pos = toCanvasPos(t.clientX, t.clientY);
+
+        // 命中测试：有选框时检测 handle，否则绘新框
+        let handle: DragHandle = 'new';
+        const cur = selRectRef.current;
+        if (cur && cur.w > 0 && cur.h > 0) {
+          handle = hitTest(cur, pos.x, pos.y, zoomRef.current);
+        }
+
+        dragHandle.current = handle;
+        dragStart.current  = {
+          px: pos.x, py: pos.y,
+          rect: cur ? { ...cur } : { x: pos.x, y: pos.y, w: 0, h: 0 },
+        };
+        isDragging.current = true;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+
+      if (e.touches.length === 2 && pinchDist !== null && touchPanStart !== null) {
+        const [a, b] = [e.touches[0], e.touches[1]];
+        const newDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+        const ratio   = newDist / pinchDist;
+        const midX    = (a.clientX + b.clientX) / 2;
+        const midY    = (a.clientY + b.clientY) / 2;
+
+        setZoom(prev => {
+          const next = Math.max(0.2, Math.min(10, prev * ratio));
+          const wRect = wrapper.getBoundingClientRect();
+          const mx = midX - wRect.left;
+          const my = midY - wRect.top;
+          setPan(prevPan => ({
+            x: mx - (mx - prevPan.x) * (next / prev) + (midX - touchPanStart!.mx) * 0,
+            y: my - (my - prevPan.y) * (next / prev) + (midY - touchPanStart!.my) * 0,
+          }));
+          return next;
+        });
+        // 同时双指平移
+        setPan(prevPan => ({
+          x: prevPan.x + (midX - touchPanStart!.mx) * 0.15,
+          y: prevPan.y + (midY - touchPanStart!.my) * 0.15,
+        }));
+
+        pinchDist = newDist;
+        touchPanStart = { ...touchPanStart, mx: midX, my: midY };
+        return;
+      }
+
+      if (e.touches.length === 1 && isDragging.current && dragStart.current) {
+        const t   = e.touches[0];
+        const pos = toCanvasPos(t.clientX, t.clientY);
+        const nr  = computeDraggedRectRef.current(
+          dragHandle.current,
+          dragStart.current.rect,
+          dragStart.current.px, dragStart.current.py,
+          pos.x, pos.y,
+        );
+        setSelRectBoth(nr);
+        drawPreviewRef.current(nr);
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length > 0) return; // 还有手指在屏幕上
+
+      if (!isDragging.current || !dragStart.current) {
+        pinchDist     = null;
+        touchPanStart = null;
+        return;
+      }
+
+      isDragging.current = false;
+      const lastTouch = e.changedTouches[0];
+      const pos = toCanvasPos(lastTouch.clientX, lastTouch.clientY);
+      const final = computeDraggedRectRef.current(
+        dragHandle.current,
+        dragStart.current.rect,
+        dragStart.current.px, dragStart.current.py,
+        pos.x, pos.y,
+      );
+      dragStart.current = null;
+      pinchDist         = null;
+      touchPanStart     = null;
+
+      if (dragHandle.current === 'new' && (final.w < 4 || final.h < 4)) {
+        setSelRectBoth(null);
+        return;
+      }
+
+      const nr = normalize(final);
+      setSelRectBoth(nr);
+      applySelRectRef.current(nr);
+    };
+
+    wrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+    wrapper.addEventListener('touchmove',  onTouchMove,  { passive: false });
+    wrapper.addEventListener('touchend',   onTouchEnd,   { passive: false });
+    return () => {
+      wrapper.removeEventListener('touchstart', onTouchStart);
+      wrapper.removeEventListener('touchmove',  onTouchMove);
+      wrapper.removeEventListener('touchend',   onTouchEnd);
+    };
+  // step 变化时重新注册（config 步骤才有 wrapperRef）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   // ── 自动检测 ──────────────────────────────────────────────────────────────
-  const runDetect = async (dataUrl: string) => {
+  const runDetect = async (dataUrl: string, hintTotalRef?: number) => {
     setDetecting(true);
     setDetectInfo(null);
     try {
       const result = await detectGrid(dataUrl);
-      setGridCols(result.cols);
-      setGridRows(result.rows);
+
+      // 如果用户填了数量合计，且合计与自动识别的格子数偏差 >10%，优先信任用户数据
+      const autoTotal = result.cols * result.rows;
+      const hint = hintTotalRef ?? 0;
+      if (hint > 0 && Math.abs(hint - autoTotal) / autoTotal > 0.10) {
+        // 保持自动识别的列数，按合计反推行数
+        const adjustedRows = Math.max(1, Math.round(hint / result.cols));
+        setGridCols(result.cols);
+        setGridRows(adjustedRows);
+        setDetectInfo(
+          `自动识别：${result.cols}×${result.rows} 格` +
+          `，依颜色数量合计（${hint} 格）调整为 ${result.cols}×${adjustedRows}` +
+          `，单格约 ${result.cellW}×${result.cellH}px`
+        );
+      } else {
+        setGridCols(result.cols);
+        setGridRows(result.rows);
+        const methodNote = (result as unknown as { method?: string }).method
+          ? ` [${(result as unknown as { method: string }).method}]` : '';
+        setDetectInfo(`自动识别：${result.cols}×${result.rows} 格，单格约 ${result.cellW}×${result.cellH}px${methodNote}`);
+      }
+
       setMarginTop   (result.margin.top);
       setMarginRight (result.margin.right);
       setMarginBottom(result.margin.bottom);
@@ -460,17 +659,13 @@ export const UploadPanel: React.FC = () => {
         const ds = drawScaleRef.current;
         const cw = img.naturalWidth  * ds;
         const ch = img.naturalHeight * ds;
-        setSelRect({
+        setSelRectBoth({
           x: result.margin.left  * ds,
           y: result.margin.top   * ds,
           w: cw - (result.margin.left + result.margin.right)  * ds,
           h: ch - (result.margin.top  + result.margin.bottom) * ds,
         });
       }
-
-      const methodNote = (result as unknown as { method?: string }).method
-        ? ` [${(result as unknown as { method: string }).method}]` : '';
-      setDetectInfo(`自动识别：${result.cols}×${result.rows} 格，单格约 ${result.cellW}×${result.cellH}px${methodNote}`);
     } catch {
       setDetectInfo('自动识别失败，请手动框选有效区域');
     } finally {
@@ -483,7 +678,7 @@ export const UploadPanel: React.FC = () => {
     const file = acceptedFiles[0];
     if (!file) return;
     setError(null);
-    setSelRect(null);
+    setSelRectBoth(null);
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const dataUrl = ev.target?.result as string;
@@ -510,11 +705,11 @@ export const UploadPanel: React.FC = () => {
     maxFiles: 1,
   });
 
-  // ── margin/grid 变化重绘 ──────────────────────────────────────────────────
+  // ── margin/grid/zoom 变化重绘 ───────────────────────────────────────────
   useEffect(() => {
     if (step === 'config') requestAnimationFrame(() => drawPreview());
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, gridCols, gridRows, marginTop, marginRight, marginBottom, marginLeft]);
+  }, [step, gridCols, gridRows, marginTop, marginRight, marginBottom, marginLeft, zoom]);
 
   useEffect(() => {
     if (step === 'config') requestAnimationFrame(() => drawPreview());
@@ -530,14 +725,21 @@ export const UploadPanel: React.FC = () => {
       const boardData = await parsePerlerImage(
         previewUrl, gridCols, gridRows,
         { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft },
+        hintItems,
       );
       const board: PerlerBoard = {
         id: Date.now().toString(),
         name: '拼豆图纸',
         ...boardData,
         imageDataUrl: previewUrl,
+        // 若用户指定了颜色提示，将 code 列表存入 board，供编辑时限制色板
+        hintCodes: hintItems.length > 0 ? hintItems.map((h) => h.code) : undefined,
       };
+      clearHistory();
+      setCurrentProjectId(null); // 新解析，尚未保存
       setBoard(board);
+      // 将初始解析结果作为首个历史快照（可 Undo 回到解析初始状态）
+      commitBoard(board, '初始解析');
     } catch (e) {
       setError(e instanceof Error ? e.message : '解析失败，请重试');
     } finally {
@@ -549,7 +751,7 @@ export const UploadPanel: React.FC = () => {
     setPreviewUrl(null);
     setStep('upload');
     setError(null);
-    setSelRect(null);
+    setSelRectBoth(null);
     imgRef.current = null;
     setZoom(1);
     setPan({ x: 0, y: 0 });
@@ -589,6 +791,11 @@ export const UploadPanel: React.FC = () => {
           </div>
         </div>
         {error && <p className={styles.error}>{error}</p>}
+
+        {/* 已保存项目列表 */}
+        <div className={styles.savedSection}>
+          <SavedProjects />
+        </div>
       </div>
     );
   }
@@ -649,7 +856,7 @@ export const UploadPanel: React.FC = () => {
           <button
             className={styles.btnRedetect}
             disabled={detecting || !previewUrl}
-            onClick={() => previewUrl && runDetect(previewUrl)}
+            onClick={() => previewUrl && runDetect(previewUrl, hintTotal)}
           >
             {detecting ? '识别中…' : '自动识别'}
           </button>
@@ -674,6 +881,38 @@ export const UploadPanel: React.FC = () => {
                 className={styles.numInput} />
             </label>
           </div>
+
+          {/* 数量合计提示：当用户填了 count 时显示 */}
+          {hintTotal > 0 && (() => {
+            const currentTotal = gridCols * gridRows;
+            const diff = Math.abs(hintTotal - currentTotal);
+            const diffPct = currentTotal > 0 ? diff / currentTotal : 1;
+            const mismatch = diffPct > 0.05; // 偏差 >5% 标黄警告
+            return (
+              <div className={`${styles.hintTotalBar} ${mismatch ? styles.hintTotalMismatch : styles.hintTotalOk}`}>
+                <span>
+                  颜色数量合计 <strong>{hintTotal}</strong> 格
+                  {mismatch
+                    ? `，当前设定 ${currentTotal} 格，偏差 ${Math.round(diffPct * 100)}%`
+                    : `，与当前设定（${currentTotal} 格）吻合`
+                  }
+                </span>
+                {mismatch && (
+                  <button
+                    className={styles.btnFillFromHint}
+                    onClick={() => {
+                      // 保持列数，根据合计反推行数（向上取整）
+                      const newRows = Math.max(1, Math.round(hintTotal / gridCols));
+                      setGridRows(newRows);
+                    }}
+                    title="根据数量合计调整行数（保持列数不变）"
+                  >
+                    按合计调整
+                  </button>
+                )}
+              </div>
+            );
+          })()}
         </section>
 
         <section className={styles.section}>
@@ -685,25 +924,25 @@ export const UploadPanel: React.FC = () => {
             <div />
             <label className={styles.marginInput}><span>上</span>
               <input type="number" min={0} max={9999} value={marginTop}
-                onChange={(e) => { setMarginTop(Number(e.target.value)); setSelRect(null); }}
+                onChange={(e) => { setMarginTop(Number(e.target.value)); setSelRectBoth(null); }}
                 className={styles.smallInput} />
             </label>
             <div />
             <label className={styles.marginInput}><span>左</span>
               <input type="number" min={0} max={9999} value={marginLeft}
-                onChange={(e) => { setMarginLeft(Number(e.target.value)); setSelRect(null); }}
+                onChange={(e) => { setMarginLeft(Number(e.target.value)); setSelRectBoth(null); }}
                 className={styles.smallInput} />
             </label>
             <div className={styles.marginCenter}>图纸</div>
             <label className={styles.marginInput}><span>右</span>
               <input type="number" min={0} max={9999} value={marginRight}
-                onChange={(e) => { setMarginRight(Number(e.target.value)); setSelRect(null); }}
+                onChange={(e) => { setMarginRight(Number(e.target.value)); setSelRectBoth(null); }}
                 className={styles.smallInput} />
             </label>
             <div />
             <label className={styles.marginInput}><span>下</span>
               <input type="number" min={0} max={9999} value={marginBottom}
-                onChange={(e) => { setMarginBottom(Number(e.target.value)); setSelRect(null); }}
+                onChange={(e) => { setMarginBottom(Number(e.target.value)); setSelRectBoth(null); }}
                 className={styles.smallInput} />
             </label>
             <div />
@@ -711,6 +950,14 @@ export const UploadPanel: React.FC = () => {
         </section>
 
         {error && <p className={styles.error}>{error}</p>}
+
+        <section className={styles.section}>
+          <h4 className={styles.sectionTitle}>涉及颜色（可选）</h4>
+          <p className={styles.sectionHint}>
+            选择图纸中用到的颜色，可选填每种颜色的格子数量，帮助更精准识别
+          </p>
+          <PaletteSelector items={hintItems} onChange={setHintItems} />
+        </section>
 
         <div className={styles.actions}>
           <button className={styles.btnSecondary} onClick={handleReset}>重新上传</button>

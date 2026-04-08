@@ -4,9 +4,11 @@
   overflow: hidden;
 }
 
+/* 主画布区：相对定位，让底部抽屉可以 absolute 叠加在上面 */
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }

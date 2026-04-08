@@ -3,10 +3,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex: 1;
   padding: 40px;
   gap: 16px;
+  overflow-y: auto;
+}
+
+/* 已保存项目区 */
+.savedSection {
+  width: 100%;
+  max-width: 520px;
 }
 
 .dropzone {
@@ -501,6 +508,53 @@
   color: var(--text-secondary);
   opacity: 0.65;
   white-space: nowrap;
+}
+
+/* ===== 数量合计提示栏 ===== */
+.hintTotalBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 5px 9px;
+  line-height: 1.5;
+}
+
+.hintTotalOk {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.07);
+  border: 1px solid rgba(74, 222, 128, 0.22);
+}
+
+.hintTotalMismatch {
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.07);
+  border: 1px solid rgba(250, 204, 21, 0.25);
+}
+
+.hintTotalBar strong {
+  font-weight: 700;
+}
+
+.btnFillFromHint {
+  padding: 3px 9px;
+  background: rgba(250, 204, 21, 0.1);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  border-radius: 5px;
+  color: #facc15;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.btnFillFromHint:hover {
+  background: rgba(250, 204, 21, 0.2);
+  border-color: #facc15;
 }
 
 /* ===== 操作按钮 ===== */

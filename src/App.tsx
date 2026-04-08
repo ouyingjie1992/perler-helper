@@ -7,7 +7,7 @@ import { useBoardStore } from './store/boardStore';
 import styles from './App.module.css';
 
 function App() {
-  const { board, currentPage } = useBoardStore();
+  const { board, currentPage, focusMode } = useBoardStore();
 
   const renderContent = () => {
     switch (currentPage) {
@@ -26,7 +26,7 @@ function App() {
 
   return (
     <div className={styles.app}>
-      <Sidebar />
+      {!focusMode && <Sidebar />}
       <div className={styles.content}>
         <Header />
         <main className={styles.main}>
