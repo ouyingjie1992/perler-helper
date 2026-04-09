@@ -1,6 +1,8 @@
 import type { PerlerBoard } from '../types';
 import type { HintItem } from '../store/boardStore';
-import { parsePerlerImageOffline } from './offlineParser';
+import { parsePerlerImageOffline, parsePerlerImageSimple, type SimplePixelationMode } from './offlineParser';
+
+export type { SimplePixelationMode };
 
 const SERVER_URL = (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? '';
 
@@ -86,4 +88,25 @@ export function getContrastColor(hex: string): string {
   const b = parseInt(hex.slice(5, 7), 16);
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return lum > 0.5 ? '#000000' : '#ffffff';
+}
+
+// ─── 简易解析函数（perler-beads-master 算法，纯前端离线）────────────────────
+
+/**
+ * 简易图纸解析，始终在前端 Canvas 运行，不调用后端。
+ * 适合对精度要求不高、希望快速得到结果的场景。
+ *
+ * @param mode           采样模式：'dominant'（主导色）| 'average'（均值）
+ * @param mergeThreshold 相似色合并阈值（0~441）：0=不合并，30=轻度，80=强力
+ */
+export async function parsePerlerImageSimpleMode(
+  imageDataUrl: string,
+  gridCols: number,
+  gridRows: number,
+  margin: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 },
+  hintItems: HintItem[] = [],
+  mode: SimplePixelationMode = 'dominant',
+  mergeThreshold = 30,
+): Promise<Omit<PerlerBoard, 'id' | 'name'>> {
+  return parsePerlerImageSimple(imageDataUrl, gridCols, gridRows, margin, hintItems, mode, mergeThreshold);
 }

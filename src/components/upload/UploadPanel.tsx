@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { parsePerlerImage } from '../../utils/boardParser';
+import { parsePerlerImage, parsePerlerImageSimpleMode, type SimplePixelationMode } from '../../utils/boardParser';
 import { detectGrid } from '../../utils/gridDetector';
 import { useBoardStore } from '../../store/boardStore';
 import { PaletteSelector } from './PaletteSelector';
@@ -104,6 +104,10 @@ export const UploadPanel: React.FC = () => {
   const [marginRight, setMarginRight] = useState(0);
   const [marginBottom, setMarginBottom] = useState(0);
   const [marginLeft, setMarginLeft]   = useState(0);
+
+  // ── 简易解析参数 ──────────────────────────────────────────────────────────
+  const [simpleMode, setSimpleMode] = useState<SimplePixelationMode>('dominant');
+  const [mergeThreshold, setMergeThreshold] = useState(30);
 
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -747,8 +751,38 @@ export const UploadPanel: React.FC = () => {
     }
   };
 
-  const handleReset = () => {
-    setPreviewUrl(null);
+  // ── 简易解析（perler-beads-master 算法，纯前端离线）─────────────────────────
+  const handleSimpleConfirm = async () => {
+    if (!previewUrl) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const boardData = await parsePerlerImageSimpleMode(
+        previewUrl, gridCols, gridRows,
+        { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft },
+        hintItems,
+        simpleMode,
+        mergeThreshold,
+      );
+      const board: PerlerBoard = {
+        id: Date.now().toString(),
+        name: '拼豆图纸',
+        ...boardData,
+        imageDataUrl: previewUrl,
+        hintCodes: hintItems.length > 0 ? hintItems.map((h) => h.code) : undefined,
+      };
+      clearHistory();
+      setCurrentProjectId(null);
+      setBoard(board);
+      commitBoard(board, '初始解析（简易）');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '简易解析失败，请重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = () => {    setPreviewUrl(null);
     setStep('upload');
     setError(null);
     setSelRectBoth(null);
@@ -963,6 +997,71 @@ export const UploadPanel: React.FC = () => {
           <button className={styles.btnSecondary} onClick={handleReset}>重新上传</button>
           <button className={styles.btnPrimary} onClick={handleConfirm} disabled={loading || detecting}>
             {loading ? '解析中...' : '开始解析'}
+          </button>
+        </div>
+
+        {/* 简易解析区 */}
+        <div className={styles.simpleParseSection}>
+          <div className={styles.simpleParseTitleRow}>
+            <span className={styles.simpleParseTitleIcon}>⚡</span>
+            <span className={styles.simpleParseTitle}>简易解析</span>
+            <span className={styles.simpleParseBadge}>离线 · 速度快</span>
+          </div>
+          <p className={styles.simpleParseHint}>
+            使用欧氏距离色彩匹配，无需服务器，速度更快。适合卡通/色块清晰的图纸。
+          </p>
+
+          <div className={styles.simpleParseOptions}>
+            {/* 采样模式 */}
+            <div className={styles.simpleOptionGroup}>
+              <span className={styles.simpleOptionLabel}>采样模式</span>
+              <div className={styles.simpleToggle}>
+                <button
+                  className={`${styles.simpleToggleBtn} ${simpleMode === 'dominant' ? styles.simpleToggleActive : ''}`}
+                  onClick={() => setSimpleMode('dominant')}
+                  title="取区域内出现次数最多的像素色（适合卡通图）"
+                >
+                  主导色
+                </button>
+                <button
+                  className={`${styles.simpleToggleBtn} ${simpleMode === 'average' ? styles.simpleToggleActive : ''}`}
+                  onClick={() => setSimpleMode('average')}
+                  title="取区域内所有像素的 RGB 均值（适合渐变图）"
+                >
+                  均值
+                </button>
+              </div>
+            </div>
+
+            {/* 相似度合并阈值 */}
+            <div className={styles.simpleOptionGroup}>
+              <span className={styles.simpleOptionLabel}>
+                相似色合并
+                <span className={styles.simpleThresholdVal}>{mergeThreshold === 0 ? '关闭' : mergeThreshold}</span>
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={mergeThreshold}
+                onChange={(e) => setMergeThreshold(Number(e.target.value))}
+                className={styles.simpleSlider}
+                title={`合并距离 < ${mergeThreshold} 的相近颜色（0=不合并，越大颜色越少）`}
+              />
+              <div className={styles.simpleSliderLabels}>
+                <span>不合并</span>
+                <span>强力合并</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            className={styles.btnSimple}
+            onClick={handleSimpleConfirm}
+            disabled={loading || detecting}
+          >
+            {loading ? '解析中...' : '⚡ 简易解析'}
           </button>
         </div>
 

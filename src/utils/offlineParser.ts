@@ -373,3 +373,222 @@ export async function parsePerlerImageOffline(
     margin,
   };
 }
+
+// ─── 简易解析引擎（perler-beads-master 算法）────────────────────────────────
+//
+// 算法来源：github.com/perler-beads-master
+//  - 颜色匹配：RGB 欧氏距离（比 CIEDE2000 快，色相偏差略大）
+//  - 采样模式：主导色（Dominant）或均值（Average）
+//  - 全局颜色合并：按频率降序，高频色吸收欧氏距离 < threshold 的低频色
+// ────────────────────────────────────────────────────────────────────────────
+
+export type SimplePixelationMode = 'dominant' | 'average';
+
+/** RGB 欧氏距离 */
+function rgbDistance(r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number {
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+}
+
+/** 欧氏距离最近色匹配（速度快于 CIEDE2000） */
+function findNearestColorEuclidean(r: number, g: number, b: number, palette: MarkColor[]): MarkColor {
+  let bestDist = Infinity;
+  let best = palette[0];
+  for (const c of palette) {
+    const [cr, cg, cb] = hexToRgb(c.hex);
+    const d = rgbDistance(r, g, b, cr, cg, cb);
+    if (d === 0) return c;
+    if (d < bestDist) { bestDist = d; best = c; }
+  }
+  return best;
+}
+
+/** 均值采样：对区域内所有像素 RGB 求均值（忽略 alpha<128 的像素） */
+function sampleRegionAverage(
+  data: Uint8ClampedArray,
+  width: number,
+  x0: number, y0: number, x1: number, y1: number
+): [number, number, number] {
+  let sumR = 0, sumG = 0, sumB = 0, count = 0;
+  const px0 = Math.max(0, Math.round(x0));
+  const py0 = Math.max(0, Math.round(y0));
+  const px1 = Math.min(width - 1, Math.round(x1));
+  const py1 = Math.min(Math.floor(data.length / (width * 4)) - 1, Math.round(y1));
+
+  for (let y = py0; y <= py1; y++) {
+    for (let x = px0; x <= px1; x++) {
+      const i = (y * width + x) * 4;
+      if (data[i + 3] < 128) continue; // 跳过透明像素
+      sumR += data[i]; sumG += data[i + 1]; sumB += data[i + 2];
+      count++;
+    }
+  }
+  if (count === 0) return [128, 128, 128];
+  return [Math.round(sumR / count), Math.round(sumG / count), Math.round(sumB / count)];
+}
+
+/** 主导色采样：统计区域内每个 RGB 三元组频率，取最高频（与 sampleRegionDominant 的量化方式不同，这里精确匹配） */
+function sampleRegionDominantExact(
+  data: Uint8ClampedArray,
+  width: number,
+  x0: number, y0: number, x1: number, y1: number
+): [number, number, number] {
+  const freq = new Map<string, { count: number; r: number; g: number; b: number }>();
+  const px0 = Math.max(0, Math.round(x0));
+  const py0 = Math.max(0, Math.round(y0));
+  const px1 = Math.min(width - 1, Math.round(x1));
+  const py1 = Math.min(Math.floor(data.length / (width * 4)) - 1, Math.round(y1));
+
+  for (let y = py0; y <= py1; y++) {
+    for (let x = px0; x <= px1; x++) {
+      const i = (y * width + x) * 4;
+      if (data[i + 3] < 128) continue;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const key = `${r},${g},${b}`;
+      const entry = freq.get(key);
+      if (entry) entry.count++;
+      else freq.set(key, { count: 1, r, g, b });
+    }
+  }
+
+  if (freq.size === 0) return [128, 128, 128];
+  let best = freq.values().next().value!;
+  for (const entry of freq.values()) {
+    if (entry.count > best.count) best = entry;
+  }
+  return [best.r, best.g, best.b];
+}
+
+/**
+ * 简易图纸解析（perler-beads-master 算法）
+ *
+ * @param mode         采样模式：'dominant'（主导色，适合卡通图）| 'average'（均值，适合渐变图）
+ * @param mergeThreshold 相似度合并阈值（0~441，默认 30）：
+ *                       低频颜色与高频颜色欧氏距离 < threshold 时被合并
+ *                       0 = 不合并；30 = 轻度合并；80 = 强力合并
+ */
+export async function parsePerlerImageSimple(
+  imageDataUrl: string,
+  gridCols: number,
+  gridRows: number,
+  margin: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 },
+  hintItems: HintItem[] = [],
+  mode: SimplePixelationMode = 'dominant',
+  mergeThreshold = 30,
+): Promise<Omit<PerlerBoard, 'id' | 'name'>> {
+  const { data, width, height } = await loadImageData(imageDataUrl);
+
+  const left = margin.left;
+  const top = margin.top;
+  const right = width - margin.right;
+  const bottom = height - margin.bottom;
+  const cellW = (right - left) / gridCols;
+  const cellH = (bottom - top) / gridRows;
+
+  // 候选色卡（欧氏距离版，不需要 Lab 预计算）
+  const hintCodes = hintItems.map(h => h.code);
+  const palette = hintCodes.length > 0
+    ? MARK_COLOR_PALETTE.filter(c => hintCodes.includes(c.code))
+    : MARK_COLOR_PALETTE;
+  const activePalette = palette.length > 0 ? palette : MARK_COLOR_PALETTE;
+
+  // Step 1：逐格采样 + 欧氏距离映射
+  type RawCell = { row: number; col: number; r: number; g: number; b: number };
+  const rawCells: RawCell[] = [];
+
+  for (let row = 0; row < gridRows; row++) {
+    for (let col = 0; col < gridCols; col++) {
+      const x0 = left + col * cellW;
+      const y0 = top + row * cellH;
+      const x1 = x0 + cellW - 1;
+      const y1 = y0 + cellH - 1;
+      const [r, g, b] = mode === 'dominant'
+        ? sampleRegionDominantExact(data, width, x0, y0, x1, y1)
+        : sampleRegionAverage(data, width, x0, y0, x1, y1);
+      rawCells.push({ row, col, r, g, b });
+    }
+  }
+
+  // Step 2：初始颜色映射（采样 RGB → 最近色）
+  type MappedRaw = { row: number; col: number; code: string; hex: string };
+  const mappedRaw: MappedRaw[] = rawCells.map(({ row, col, r, g, b }) => {
+    const matched = findNearestColorEuclidean(r, g, b, activePalette);
+    return { row, col, code: matched.code, hex: matched.hex };
+  });
+
+  // Step 3：全局颜色合并（相似度阈值合并低频色 → 高频色）
+  // 统计每种 code 的频次
+  const freqMap: Record<string, { count: number; hex: string }> = {};
+  for (const { code, hex } of mappedRaw) {
+    if (!freqMap[code]) freqMap[code] = { count: 0, hex };
+    freqMap[code].count++;
+  }
+
+  // 按频率降序排列
+  const sortedCodes = Object.entries(freqMap)
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([code]) => code);
+
+  // 构建 code → 合并目标的映射
+  const mergeMap: Record<string, string> = {};
+
+  if (mergeThreshold > 0) {
+    // 预计算每个 code 对应的 RGB
+    const codeRgb: Record<string, [number, number, number]> = {};
+    for (const code of sortedCodes) {
+      codeRgb[code] = hexToRgb(freqMap[code].hex);
+    }
+
+    for (let i = 0; i < sortedCodes.length; i++) {
+      const highCode = sortedCodes[i];
+      if (mergeMap[highCode]) continue; // 已经被合并了
+      const [hr, hg, hb] = codeRgb[highCode];
+
+      for (let j = i + 1; j < sortedCodes.length; j++) {
+        const lowCode = sortedCodes[j];
+        if (mergeMap[lowCode]) continue;
+        const [lr, lg, lb] = codeRgb[lowCode];
+        const dist = rgbDistance(hr, hg, hb, lr, lg, lb);
+        if (dist < mergeThreshold) {
+          mergeMap[lowCode] = highCode; // 低频色合并到高频色
+        }
+      }
+    }
+  }
+
+  // Step 4：应用合并，构建最终 cells
+  const cells: PerlerCell[] = [];
+  const countMap: Record<string, number> = {};
+  const hexMap: Record<string, string> = {};
+
+  for (const { row, col, code, hex } of mappedRaw) {
+    // 递归追踪合并链（防止 A→B→C 的情况）
+    let finalCode = code;
+    while (mergeMap[finalCode]) finalCode = mergeMap[finalCode];
+    const finalHex = freqMap[finalCode]?.hex ?? hex;
+
+    cells.push({ row, col, colorCode: finalCode, colorHex: finalHex });
+    countMap[finalCode] = (countMap[finalCode] ?? 0) + 1;
+    hexMap[finalCode] = finalHex;
+  }
+
+  // Step 5：构建 colorStats
+  const colorStats: ColorStat[] = Object.entries(countMap)
+    .map(([code, count]) => ({
+      colorCode: code,
+      colorHex: hexMap[code],
+      count,
+      cells: cells
+        .filter(c => c.colorCode === code)
+        .map(c => ({ row: c.row, col: c.col })),
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    rows: gridRows,
+    cols: gridCols,
+    cells,
+    colorStats,
+    imageDataUrl,
+    margin,
+  };
+}

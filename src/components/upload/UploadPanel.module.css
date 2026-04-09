@@ -620,3 +620,150 @@
 
 .skipLink:hover:not(:disabled) { opacity: 1; }
 .skipLink:disabled { cursor: not-allowed; }
+
+/* ===== 简易解析区 ===== */
+.simpleParseSection {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px dashed rgba(255, 200, 50, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 200, 50, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.simpleParseTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.simpleParseTitleIcon {
+  font-size: 14px;
+}
+
+.simpleParseTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.simpleParseBadge {
+  margin-left: 4px;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(255, 200, 50, 0.18);
+  color: #ffc832;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.simpleParseHint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.simpleParseOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.simpleOptionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.simpleOptionLabel {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.simpleThresholdVal {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffc832;
+  min-width: 28px;
+}
+
+/* 模式切换按钮组 */
+.simpleToggle {
+  display: flex;
+  gap: 4px;
+}
+
+.simpleToggleBtn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 36px;
+}
+
+.simpleToggleBtn:hover {
+  border-color: #ffc832;
+  color: var(--text-primary);
+}
+
+.simpleToggleActive {
+  background: rgba(255, 200, 50, 0.18);
+  border-color: #ffc832;
+  color: #ffc832;
+  font-weight: 600;
+}
+
+/* Slider */
+.simpleSlider {
+  width: 100%;
+  accent-color: #ffc832;
+  cursor: pointer;
+  height: 20px;
+}
+
+.simpleSliderLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  margin-top: -2px;
+}
+
+/* 简易解析按钮 */
+.btnSimple {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255, 200, 50, 0.15);
+  color: #ffc832;
+  border: 1px solid rgba(255, 200, 50, 0.45);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-height: 44px;
+}
+
+.btnSimple:hover:not(:disabled) {
+  background: rgba(255, 200, 50, 0.28);
+  border-color: #ffc832;
+}
+
+.btnSimple:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
