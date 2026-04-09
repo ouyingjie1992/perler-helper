@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#1a1a2e"/>
+  <!-- 拼豆格子图案 -->
+  <g fill="none" stroke-width="2">
+    <!-- 第一行 -->
+    <rect x="80" y="80" width="60" height="60" rx="8" fill="#e74c3c"/>
+    <rect x="156" y="80" width="60" height="60" rx="8" fill="#e74c3c"/>
+    <rect x="232" y="80" width="60" height="60" rx="8" fill="#f39c12"/>
+    <rect x="308" y="80" width="60" height="60" rx="8" fill="#f39c12"/>
+    <rect x="384" y="80" width="60" height="60" rx="8" fill="#e74c3c"/>
+    <!-- 第二行 -->
+    <rect x="80" y="156" width="60" height="60" rx="8" fill="#e74c3c"/>
+    <rect x="156" y="156" width="60" height="60" rx="8" fill="#f39c12"/>
+    <rect x="232" y="156" width="60" height="60" rx="8" fill="#2ecc71"/>
+    <rect x="308" y="156" width="60" height="60" rx="8" fill="#f39c12"/>
+    <rect x="384" y="156" width="60" height="60" rx="8" fill="#e74c3c"/>
+    <!-- 第三行 -->
+    <rect x="80" y="232" width="60" height="60" rx="8" fill="#3498db"/>
+    <rect x="156" y="232" width="60" height="60" rx="8" fill="#2ecc71"/>
+    <rect x="232" y="232" width="60" height="60" rx="8" fill="#9b59b6"/>
+    <rect x="308" y="232" width="60" height="60" rx="8" fill="#2ecc71"/>
+    <rect x="384" y="232" width="60" height="60" rx="8" fill="#3498db"/>
+    <!-- 第四行 -->
+    <rect x="80" y="308" width="60" height="60" rx="8" fill="#e74c3c"/>
+    <rect x="156" y="308" width="60" height="60" rx="8" fill="#f39c12"/>
+    <rect x="232" y="308" width="60" height="60" rx="8" fill="#2ecc71"/>
+    <rect x="308" y="308" width="60" height="60" rx="8" fill="#f39c12"/>
+    <rect x="384" y="308" width="60" height="60" rx="8" fill="#e74c3c"/>
+    <!-- 第五行 -->
+    <rect x="80" y="384" width="60" height="60" rx="8" fill="#3498db"/>
+    <rect x="156" y="384" width="60" height="60" rx="8" fill="#3498db"/>
+    <rect x="232" y="384" width="60" height="60" rx="8" fill="#9b59b6"/>
+    <rect x="308" y="384" width="60" height="60" rx="8" fill="#3498db"/>
+    <rect x="384" y="384" width="60" height="60" rx="8" fill="#3498db"/>
+    <!-- 圆点装饰（模拟拼豆中心孔） -->
+    <circle cx="110" cy="110" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="186" cy="110" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="262" cy="110" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="338" cy="110" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="414" cy="110" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="110" cy="186" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="186" cy="186" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="262" cy="186" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="338" cy="186" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="414" cy="186" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="110" cy="262" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="186" cy="262" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="262" cy="262" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="338" cy="262" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="414" cy="262" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="110" cy="338" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="186" cy="338" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="262" cy="338" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="338" cy="338" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="414" cy="338" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="110" cy="414" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="186" cy="414" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="262" cy="414" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="338" cy="414" r="8" fill="#1a1a2e" opacity="0.4"/>
+    <circle cx="414" cy="414" r="8" fill="#1a1a2e" opacity="0.4"/>
+  </g>
+</svg>
